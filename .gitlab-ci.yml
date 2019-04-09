@@ -1,0 +1,20 @@
+include:
+  - project: 'redmic-project/gitlab-ci-templates'
+    ref: master
+    file: '/deployment.yml'
+
+stages:
+  - deploy
+
+variables:
+  STACK: gateway
+  IMAGE_NAME: traefik
+  IMAGE_TAG: latest
+
+.deploy:
+  script:
+    - >
+      deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
+      PUBLIC_HOSTNAME=${PUBLIC_HOSTNAME} UI_AUTH=${UI_AUTH}
+  environment:
+    url: https://${CI_PROJECT_NAME}.${PUBLIC_HOSTNAME}
