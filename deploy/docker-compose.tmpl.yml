@@ -5,7 +5,7 @@ services:
     image: ${IMAGE_NAME:-traefik}:${IMAGE_TAG:-v1.7}
     command:
       - --api
-      - --ping=true
+      - --ping
       - --ping.entrypoint=traefik
       - --sendAnonymousUsage=true
       - --entrypoints=Name:http Address::80
@@ -30,7 +30,7 @@ services:
       - tmp-vol:/tmp
       - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
-      test: /traefik healthcheck
+      test: ["CMD", "/traefik", "healthcheck", "--ping"]
       interval: ${HEALTHCHECK_INTERVAL:-30s}
       timeout: ${HEALTHCHECK_TIMEOUT:-30s}
       retries: ${HEALTHCHECK_RETRIES:-10}
