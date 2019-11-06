@@ -2,58 +2,68 @@ version: '3.5'
 
 services:
   traefik:
-    image: ${IMAGE_NAME:-traefik}:${IMAGE_TAG:-latest}
+    image: ${IMAGE_NAME:-traefik}:${IMAGE_TAG:-v1.7}
     command:
-      - "--api"
-      - "--sendAnonymousUsage=true"
-      - "--entrypoints=Name:http Address::80"
-      - "--defaultentrypoints=http"
-      - "--maxIdleConnsPerHost=1000"
-      - "--forwardingtimeouts.dialtimeout=15s"
-      - "--forwardingtimeouts.responseheadertimeout=0s"
-      - "--respondingtimeouts.idletimeout=3m"
-      - "--respondingtimeouts.readtimeout=0s"
-      - "--respondingtimeouts.writetimeout=0s"
-      - "--docker"
-      - "--docker.watch"
-      - "--docker.network=${TRAEFIK_NET_NAME}"
-      - "--docker.domain=${PUBLIC_HOSTNAME}"
-      - "--docker.swarmmode"
-      - "--metrics.prometheus=true"
-      - "--metrics.prometheus.buckets=0.1,0.3,1.2,5.0"
-      - "--metrics.prometheus.entrypoint=traefik"
+      - --api
+      - --ping
+      - --ping.entrypoint=traefik
+      - --sendAnonymousUsage=true
+      - --entrypoints=Name:http Address::80
+      - --defaultentrypoints=http
+      - --maxIdleConnsPerHost=1000
+      - --forwardingtimeouts.dialtimeout=15s
+      - --forwardingtimeouts.responseheadertimeout=0s
+      - --respondingtimeouts.idletimeout=3m
+      - --respondingtimeouts.readtimeout=0s
+      - --respondingtimeouts.writetimeout=0s
+      - --docker
+      - --docker.watch
+      - --docker.network=${TRAEFIK_NET_NAME}
+      - --docker.domain=${PUBLIC_HOSTNAME}
+      - --docker.swarmmode
+      - --metrics.prometheus=true
+      - --metrics.prometheus.buckets=0.1,0.3,1.2,5.0
+      - --metrics.prometheus.entrypoint=traefik
     networks:
-      - traefik-net
+      traefik-net:
     volumes:
-      - vol:/tmp
-      - /var/run/docker.sock:/var/run/docker.sock
+      - tmp-vol:/tmp
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD", "/traefik", "healthcheck", "--ping"]
+      interval: ${HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-30s}
+      retries: ${HEALTHCHECK_RETRIES:-10}
+      start_period: ${HEALTHCHECK_START_PERIOD:-1m}
     deploy:
       mode: replicated
-      replicas: 1
-      labels:
-        traefik.frontend.auth.basic.users: ${UI_AUTH}
-        traefik.frontend.rule: Host:traefik.${PUBLIC_HOSTNAME}
-        traefik.backend: traefik
-        traefik.port: '8080'
+      replicas: ${REPLICAS:-1}
       placement:
         constraints:
           - node.role == manager
       restart_policy:
-        delay: 10s
-        window: 1m
+        delay: ${RESTART_DELAY:-0s}
+      update_config:
+        delay: ${UPDATE_DELAY:-1m}
+      labels:
+        traefik.frontend.auth.basic.users: ${UI_AUTH}
+        traefik.frontend.rule: Host:${TRAEFIK_SUBDOMAIN:-traefik}.${PUBLIC_HOSTNAME}
+        traefik.backend: traefik
+        traefik.port: '8080'
       resources:
         limits:
-          cpus: '2'
-          memory: 128M
+          cpus: '${RESOURCES_LIMITS_CPUS:-2}'
+          memory: ${RESOURCES_LIMITS_MEMORY:-128M}
         reservations:
-          memory: 64M
+          cpus: '${RESOURCES_RESERVATIONS_CPUS:-0.001}'
+          memory: ${RESOURCES_RESERVATIONS_MEMORY:-32M}
 
 networks:
   traefik-net:
     name: ${TRAEFIK_NET_NAME}
-    driver: overlay
+    driver: ${TRAEFIK_NET_DRIVER:-overlay}
     attachable: ${TRAEFIK_NET_ATTACHABLE:-true}
 
 volumes:
-  vol:
-    name: ${TRAEFIK_VOL_NAME:-traefik-vol}
+  tmp-vol:
+    name: ${TRAEFIK_TMP_VOL_NAME:-traefik-tmp-vol}
