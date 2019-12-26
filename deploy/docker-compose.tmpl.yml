@@ -52,7 +52,7 @@ services:
         traefik.port: '8080'
       resources:
         limits:
-          cpus: '${RESOURCES_LIMITS_CPUS:-2}'
+          cpus: '${RESOURCES_LIMITS_CPUS:-1}'
           memory: ${RESOURCES_LIMITS_MEMORY:-128M}
         reservations:
           cpus: '${RESOURCES_RESERVATIONS_CPUS:-0.001}'
