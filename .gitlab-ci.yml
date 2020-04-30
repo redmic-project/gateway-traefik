@@ -7,12 +7,11 @@ stages:
   - deploy
 
 variables:
-  DD_IMAGE_NAME: traefik
-  DD_IMAGE_TAG: v1.7
-  STACK: gateway
+  PROJECT_PARENT_NAME: gateway
 
 .deploy:
   variables:
-    SERVICES_TO_CHECK: ${STACK}_${CI_PROJECT_NAME}
+    STACK: ${PROJECT_PARENT_NAME}
+    SERVICES_TO_CHECK: ${PROJECT_PARENT_NAME}_${CI_PROJECT_NAME}
   environment:
     url: https://${CI_PROJECT_NAME}.${PUBLIC_HOSTNAME}
