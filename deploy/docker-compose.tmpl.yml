@@ -8,6 +8,8 @@ services:
       - --ping
       - --ping.entrypoint=traefik
       - --sendAnonymousUsage=true
+      - --checkNewVersion=false
+      - --insecureSkipVerify=true
       - --entrypoints=Name:http Address::80
       - --defaultentrypoints=http
       - --maxIdleConnsPerHost=1000
