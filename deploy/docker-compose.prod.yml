@@ -1,6 +1,1 @@
-version: '3.5'
-
-services:
-  traefik:
-    command:
-      - --logLevel=ERROR
+version: '3.9'
