@@ -1,38 +1,46 @@
-version: '3.5'
+version: '3.9'
 
 services:
   traefik:
-    image: ${IMAGE_NAME:-traefik}:${IMAGE_TAG:-v1.7}
-    command:
-      - --api
-      - --ping
-      - --ping.entrypoint=traefik
-      - --sendAnonymousUsage=true
-      - --checkNewVersion=false
-      - --insecureSkipVerify=true
-      - --entrypoints=Name:http Address::80
-      - --defaultentrypoints=http
-      - --maxIdleConnsPerHost=1000
-      - --forwardingtimeouts.dialtimeout=15s
-      - --forwardingtimeouts.responseheadertimeout=0s
-      - --respondingtimeouts.idletimeout=3m
-      - --respondingtimeouts.readtimeout=0s
-      - --respondingtimeouts.writetimeout=0s
-      - --docker
-      - --docker.watch
-      - --docker.network=${TRAEFIK_NET_NAME}
-      - --docker.domain=${PUBLIC_HOSTNAME}
-      - --docker.swarmmode
-      - --metrics.prometheus=true
-      - --metrics.prometheus.buckets=0.1,0.3,1.2,5.0
-      - --metrics.prometheus.entrypoint=traefik
+    image: ${IMAGE_NAME:-traefik}:${IMAGE_TAG:-latest}
+    environment:
+      TRAEFIK_API:
+      TRAEFIK_API_DASHBOARD:
+      TRAEFIK_API_INSECURE:
+      TRAEFIK_PING:
+      TRAEFIK_PING_ENTRYPOINT:
+      TRAEFIK_LOG_LEVEL:
+      TRAEFIK_ACCESSLOG:
+      TRAEFIK_ACCESSLOG_FILTERS_STATUSCODES:
+      TRAEFIK_GLOBAL_SENDANONYMOUSUSAGE:
+      TRAEFIK_GLOBAL_CHECKNEWVERSION:
+      TRAEFIK_SERVERSTRANSPORT_MAXIDLECONNSPERHOST:
+      TRAEFIK_SERVERSTRANSPORT_FORWARDINGTIMEOUTS_DIALTIMEOUT:
+      TRAEFIK_SERVERSTRANSPORT_FORWARDINGTIMEOUTS_IDLECONNTIMEOUT:
+      TRAEFIK_SERVERSTRANSPORT_FORWARDINGTIMEOUTS_RESPONSEHEADERTIMEOUT:
+      TRAEFIK_SERVERSTRANSPORT_INSECURESKIPVERIFY:
+      TRAEFIK_ENTRYPOINTS_HTTP_ADDRESS: :${HTTP_INTERNAL_PORT}
+      TRAEFIK_ENTRYPOINTS_HTTP_TRANSPORT_RESPONDINGTIMEOUTS_IDLETIMEOUT:
+      TRAEFIK_ENTRYPOINTS_HTTP_TRANSPORT_RESPONDINGTIMEOUTS_READTIMEOUT:
+      TRAEFIK_ENTRYPOINTS_HTTP_TRANSPORT_RESPONDINGTIMEOUTS_WRITETIMEOUT:
+      TRAEFIK_PROVIDERS_DOCKER:
+      TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT:
+      TRAEFIK_PROVIDERS_DOCKER_WATCH:
+      TRAEFIK_PROVIDERS_DOCKER_NETWORK: ${TRAEFIK_NET_NAME}
+      TRAEFIK_PROVIDERS_DOCKER_SWARMMODE:
+      TRAEFIK_PROVIDERS_DOCKER_SWARMMODEREFRESHSECONDS:
+      TRAEFIK_METRICS_PROMETHEUS:
+      TRAEFIK_METRICS_PROMETHEUS_ADDENTRYPOINTSLABELS:
+      TRAEFIK_METRICS_PROMETHEUS_ADDSERVICESLABELS:
+      TRAEFIK_METRICS_PROMETHEUS_BUCKETS:
+      TRAEFIK_METRICS_PROMETHEUS_ENTRYPOINT:
     networks:
       traefik-net:
     volumes:
       - tmp-vol:/tmp
       - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
-      test: ["CMD", "/traefik", "healthcheck", "--ping"]
+      test: traefik healthcheck
       interval: ${HEALTHCHECK_INTERVAL:-30s}
       timeout: ${HEALTHCHECK_TIMEOUT:-30s}
       retries: ${HEALTHCHECK_RETRIES:-10}
@@ -42,16 +50,28 @@ services:
       replicas: ${REPLICAS:-1}
       placement:
         constraints:
-          - node.role == manager
+          - node.labels.${PLACEMENT_CONSTRAINTS_NODE_LABELS_NAME:-gateway} == ${PLACEMENT_CONSTRAINTS_NODE_LABELS_VALUE:-true}
       restart_policy:
         delay: ${RESTART_DELAY:-0s}
       update_config:
         delay: ${UPDATE_DELAY:-1m}
       labels:
-        traefik.frontend.auth.basic.users: ${UI_AUTH}
-        traefik.frontend.rule: Host:${TRAEFIK_SUBDOMAIN:-traefik}.${PUBLIC_HOSTNAME}
-        traefik.backend: traefik
-        traefik.port: '8080'
+        traefik.enable: 'true'
+        traefik.http.services.dummy.loadbalancer.server.port: 0
+
+        traefik.http.routers.traefik-dashboard.entrypoints: ${TRAEFIK_ENTRYPOINT}
+        traefik.http.routers.traefik-dashboard.rule: Host(`${TRAEFIK_SUBDOMAIN:-traefik}.${PUBLIC_HOSTNAME}`)
+        traefik.http.middlewares.traefik-dashboard-auth.basicauth.users: ${TRAEFIK_AUTH}
+        traefik.http.routers.traefik-dashboard.middlewares: traefik-dashboard-auth
+        traefik.http.routers.traefik-dashboard.service: api@internal
+
+        traefik.http.routers.www-redirect.entrypoints: ${TRAEFIK_ENTRYPOINT}
+        traefik.http.routers.www-redirect.rule: HostRegexp(`www.{any-subdomain:.*}${PUBLIC_HOSTNAME}`)
+        traefik.http.middlewares.www-redirect-regex.redirectregex.regex: ^http://www.(.*)
+        traefik.http.middlewares.www-redirect-regex.redirectregex.replacement: http://$${1}
+        traefik.http.middlewares.www-redirect-regex.redirectregex.permanent: 'true'
+        traefik.http.routers.www-redirect.middlewares: www-redirect-regex
+        traefik.http.routers.www-redirect.service: noop@internal
       resources:
         limits:
           cpus: '${RESOURCES_LIMITS_CPUS:-1}'
