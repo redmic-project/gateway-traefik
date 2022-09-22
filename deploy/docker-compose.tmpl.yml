@@ -1,7 +1,7 @@
 version: '3.9'
 
 services:
-  traefik:
+  traefik-v2:
     image: ${IMAGE_NAME:-traefik}:${IMAGE_TAG:-latest}
     environment:
       TRAEFIK_API:
