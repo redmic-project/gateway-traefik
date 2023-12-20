@@ -24,6 +24,10 @@ services:
       TRAEFIK_ENTRYPOINTS_HTTP_TRANSPORT_RESPONDINGTIMEOUTS_IDLETIMEOUT:
       TRAEFIK_ENTRYPOINTS_HTTP_TRANSPORT_RESPONDINGTIMEOUTS_READTIMEOUT:
       TRAEFIK_ENTRYPOINTS_HTTP_TRANSPORT_RESPONDINGTIMEOUTS_WRITETIMEOUT:
+      TRAEFIK_ENTRYPOINTS_MQTT_ADDRESS: :${MQTT_INTERNAL_PORT}
+      TRAEFIK_ENTRYPOINTS_MQTT_TRANSPORT_RESPONDINGTIMEOUTS_IDLETIMEOUT:
+      TRAEFIK_ENTRYPOINTS_MQTT_TRANSPORT_RESPONDINGTIMEOUTS_READTIMEOUT:
+      TRAEFIK_ENTRYPOINTS_MQTT_TRANSPORT_RESPONDINGTIMEOUTS_WRITETIMEOUT:
       TRAEFIK_PROVIDERS_DOCKER:
       TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT:
       TRAEFIK_PROVIDERS_DOCKER_WATCH:
@@ -37,6 +41,11 @@ services:
       TRAEFIK_METRICS_PROMETHEUS_ENTRYPOINT:
     networks:
       traefik-net:
+    ports:
+      - target: ${MQTT_INTERNAL_PORT}
+        published: ${MQTT_PORT}
+        protocol: tcp
+        mode: ${PORT_MODE}
     volumes:
       - tmp-vol:/tmp
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -49,13 +58,15 @@ services:
     deploy:
       mode: replicated
       replicas: ${REPLICAS:-1}
-      placement:
-        constraints:
-          - node.labels.${PLACEMENT_CONSTRAINTS_NODE_LABELS_NAME:-gateway} == ${PLACEMENT_CONSTRAINTS_NODE_LABELS_VALUE:-true}
       restart_policy:
         delay: ${RESTART_DELAY:-0s}
       update_config:
         delay: ${UPDATE_DELAY:-1m}
+      placement:
+        max_replicas_per_node: 1
+        constraints:
+          - node.role == manager
+          - node.labels.${PLACEMENT_CONSTRAINTS_NODE_LABELS_NAME:-gateway} == ${PLACEMENT_CONSTRAINTS_NODE_LABELS_VALUE:-true}
       labels:
         traefik.enable: ${TRAEFIK_ENABLE:-true}
         traefik.http.services.dummy.loadbalancer.server.port: 0
@@ -73,6 +84,10 @@ services:
         traefik.http.middlewares.www-redirect-regex.redirectregex.permanent: 'true'
         traefik.http.routers.www-redirect.middlewares: www-redirect-regex
         traefik.http.routers.www-redirect.service: noop@internal
+
+        traefik.http.routers.traefik-ping.entrypoints: ${TRAEFIK_ENTRYPOINT}
+        traefik.http.routers.traefik-ping.rule: HostRegexp(`{any-subdomain:.*}`) && Path(`/ping`)
+        traefik.http.routers.traefik-ping.service: ping@internal
       resources:
         limits:
           cpus: '${RESOURCES_LIMITS_CPUS:-1}'
