@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   traefik-v2:
     image: ${IMAGE_NAME:-traefik}:${IMAGE_TAG:-latest}
