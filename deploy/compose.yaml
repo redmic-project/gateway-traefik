@@ -1,5 +1,5 @@
 services:
-  traefik-v2:
+  traefik:
     image: ${IMAGE_NAME:-traefik}:${IMAGE_TAG:-latest}
     environment:
       TRAEFIK_API:
@@ -76,7 +76,7 @@ services:
         traefik.http.routers.traefik-dashboard.service: api@internal
 
         traefik.http.routers.www-redirect.entrypoints: ${TRAEFIK_ENTRYPOINT}
-        traefik.http.routers.www-redirect.rule: HostRegexp(`www.{any-subdomain:.*}${PUBLIC_HOSTNAME}`)
+        traefik.http.routers.www-redirect.rule: HostRegexp(`www.{s:.*}${PUBLIC_HOSTNAME}`)
         traefik.http.middlewares.www-redirect-regex.redirectregex.regex: ^http://www.(.*)
         traefik.http.middlewares.www-redirect-regex.redirectregex.replacement: http://$${1}
         traefik.http.middlewares.www-redirect-regex.redirectregex.permanent: 'true'
@@ -84,7 +84,7 @@ services:
         traefik.http.routers.www-redirect.service: noop@internal
 
         traefik.http.routers.traefik-ping.entrypoints: ${TRAEFIK_ENTRYPOINT}
-        traefik.http.routers.traefik-ping.rule: HostRegexp(`{any-subdomain:.*}`) && Path(`/ping`)
+        traefik.http.routers.traefik-ping.rule: HostRegexp(`{s:.*}`) && Path(`/ping`)
         traefik.http.routers.traefik-ping.service: ping@internal
       resources:
         limits:
@@ -92,7 +92,7 @@ services:
           memory: ${RESOURCES_LIMITS_MEMORY:-128M}
         reservations:
           cpus: '${RESOURCES_RESERVATIONS_CPUS:-0.001}'
-          memory: ${RESOURCES_RESERVATIONS_MEMORY:-32M}
+          memory: ${RESOURCES_RESERVATIONS_MEMORY:-64M}
 
 networks:
   traefik-net:
